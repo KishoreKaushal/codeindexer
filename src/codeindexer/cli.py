@@ -17,3 +17,7 @@ def main() -> None:
         with open(args.cpp, 'rb') as f:
             print(f.read())
     print("Hello from codeindexer cli!")
+
+
+if __name__ == "__main__":
+    main()

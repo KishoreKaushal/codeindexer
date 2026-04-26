@@ -1,4 +1,6 @@
 import argparse
+import tree_sitter_cpp as tscpp
+from tree_sitter import Language, Parser
 
 VERSION = "0.1.0"
 
@@ -15,7 +17,12 @@ def main() -> None:
     if args.cpp:
         print(f"Indexing C++ file: {args.cpp}")
         with open(args.cpp, 'rb') as f:
-            print(f.read())
+            code_bytes = f.read()
+            
+        CPP_LANGUAGE = Language(tscpp.language())
+        parser = Parser(CPP_LANGUAGE)
+        tree = parser.parse(code_bytes)
+        print(tree)
     print("Hello from codeindexer cli!")
 
 

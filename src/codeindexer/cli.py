@@ -23,29 +23,49 @@ class Scope:
 class Record:
     fqn: str # fully qualified name, e.g. "math::Adder::sum"
 
-def walk_tree_cpp(node, records: list[Record] = [], stack: deque[Scope] = []):
-    # current scope name is top of the stack if stack is not empty
-    # otherwise it's empty string
-    current_scope_name = stack[-1].name if stack else ""
-    if node.type == "function_definition":
-        node_name = node.child_by_field_name("declarator")
-        if node_name:
-            # if current scope name is there we prefix it 
-            # otherwise we just take the function name as is
-            fqn = (current_scope_name + "::" + node_name.text.decode('utf-8')) \
-                if current_scope_name else node_name.text.decode('utf-8')
-                    
-            records.append(Record(fqn=fqn))
-        
-        print(f"Found function: {node_name.text.decode('utf-8')}")
+def _text(node) -> str:
+    return node.text.decode('utf-8') if node else "" # safe extraction
+
+
+NAMESPACE_DEFINITION = "namespace_definition"
+CLASS_SPECIFIER = "class_specifier"
+STRUCT_SPECIFIER = "struct_specifier"
+CPP_SCOPE_NODES = (NAMESPACE_DEFINITION, CLASS_SPECIFIER, STRUCT_SPECIFIER)
+SCOPE_KIND = {
+    NAMESPACE_DEFINITION: "ns",
+    CLASS_SPECIFIER: "class",
+    STRUCT_SPECIFIER: "struct"
+}
+
+def build_fqn_cpp(stack: deque[Scope], name: str) -> str:
+    parts = [s.name for s in stack if s.name]
+    return "::".join(parts + [name]) \
+        if parts else f"::{name}" # if all scopes are anonymous, treat as global
     
-    # handle the scope while entering the children
+def walk_tree_cpp(node, records: list[Record] = [], stack: deque[Scope] = []):
+    pushed = False
+    if node.type in CPP_SCOPE_NODES:
+        name_node = node.child_by_field_name("name")
+        
+        if node.type != NAMESPACE_DEFINITION and not name_node:
+            return # skip anonymous classes/structs since they can't be referred to in the FQN
+        
+        scope_name = _text(name_node) if name_node else "(anon)" # empty = anonymous scope
+        stack.append(Scope(kind=SCOPE_KIND[node.type], name=scope_name))
+        pushed = True
+    
+    if node.type == "function_definition":
+        decl = node.child_by_field_name("declarator")
+        if decl:
+            node_name = decl.child_by_field_name("declarator")
+            if node_name:
+                fqn = build_fqn_cpp(stack, _text(node_name))
+                records.append(Record(fqn=fqn))
+        
     for child in node.children:
-        # append some scope to the stack
-        scope_name = stack[-1].name + "::" + node.type \
-            if stack else node.type # if stack is empty we just take the node type as scope name
-        stack.append(Scope(kind=node.type, name=scope_name))
         walk_tree_cpp(child, records, stack)
+    
+    if pushed:
         stack.pop() # pop the scope after processing the children
 
 def parse_cpp_file(file_path: str) -> None:

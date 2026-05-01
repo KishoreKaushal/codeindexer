@@ -9,8 +9,24 @@ int main() {
 namespace math {
 class Adder {
 public:
+    Adder(int base) {} // kind must be ctor, not function
+
     int sum(int x) { // must be detected as math::Adder::sum => fully qualified name
         return x;
-    }  
+    } 
+    
+    int sum(int x, int y) { // overload, can be distinguished from other sum
+        return x + y;
+    }
 };
 }
+
+namespace {
+    void foo() { // must be detected as (annon)::foo => fully qualified name with anonymous namespace
+    }
+}
+
+struct {
+    void bar() { // must be detected as A::bar => fully qualified name with anonymous struct
+    }
+} A;

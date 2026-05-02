@@ -1,8 +1,8 @@
 int sum(int a, int b); // declaration 
 
-// int sum(int a, int b) {
-//     return a + b;
-// }
+int sum(int a, int b) {
+    return a + b;
+}
 
 int main() {
     return 0;
@@ -17,9 +17,7 @@ public:
         return x;
     } 
     
-    int sum(int x, int y) { // overload, can be distinguished from other sum
-        return x + y;
-    }
+    int sum(int x, int y);
 
     int method(); // declaration only
     friend std::ostream& operator<<(std::ostream& os, const Adder& a){
@@ -31,10 +29,14 @@ public:
     }
 };
 
-Adder::method() { return 42; }
+Adder::method() { return 42; } // out-of-line-definition 
+
+
+Adder::sum(int x, int y) { // overload, can be distinguished from other sum
+    return x + y;
 }
 
-
+} // namespace math
 
 namespace {
     void foo() { // must be detected as (annon)::foo => fully qualified name with anonymous namespace

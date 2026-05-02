@@ -32,6 +32,11 @@ class Record:
         tpl = " [template]" if self.is_template else ""
         return f"{self.kind:<10} {self.fqn:<40} {self.params_sig}{tpl}"
 
+# frozen makes hashable and slots saves memory -> go look chatgpt for more details
+@dataclass(frozen=True, slots=True)
+class FuncSig:
+    fqn: str 
+    params_sig: str
 
 def get_kind(name: str, stack: deque[Scope]) -> str:
     # brief logic: look from start of the scope 
@@ -69,8 +74,36 @@ def build_fqn_cpp(stack: deque[Scope], name: str) -> str:
     parts = [s.name for s in stack if s.name]
     return "::".join(parts + [name]) \
         if parts else f"::{name}" # if all scopes are anonymous, treat as global
+
+def _classify_and_record(name_node, params_node, node, records, stack, seen, friend_flag=False):
+    name = _text(name_node)
+    params_sig = _text(params_node) if params_node else "()"
     
-def walk_tree_cpp(node, records: list[Record] = [], stack: deque[Scope] = []):
+    # handle qualified identifier separately
+    if name_node.type == "qualified_identifier":
+        name = _text(name_node.child_by_field_name("name"))
+        # build the FQN using the scopes in the stack
+        scope = _text(name_node.child_by_field_name("scope"))
+        fqn = f"{scope}::{name}"
+    else:
+        fqn = build_fqn_cpp(stack, name)
+    
+    kind = get_kind(name, stack)
+    
+    func_sig = FuncSig(fqn=fqn, params_sig=params_sig)
+    
+    if func_sig in seen:
+        return # skip duplicate
+    
+    records.append(Record(fqn=fqn, 
+                            kind=kind, 
+                            params_sig=params_sig,
+                            start_point=node.start_point, 
+                            end_point=node.end_point,
+                            is_template=is_template_fn(node)))
+    seen.add(func_sig)
+
+def walk_tree_cpp(node, records: list[Record] = [], stack: deque[Scope] = [], seen: set[FuncSig] = set()) -> None:
     pushed = False
     if node.type in CPP_SCOPE_NODES:
         name_node = node.child_by_field_name("name")
@@ -89,26 +122,18 @@ def walk_tree_cpp(node, records: list[Record] = [], stack: deque[Scope] = []):
             params_node = decl.child_by_field_name("parameters")
             
             if name_node:
-                name = _text(name_node)
-                params_sig = _text(params_node) if params_node else "()"
-                
-                # handle qualified identifier separately
-                if name_node.type == "qualified_identifier":
-                    name = _text(name_node.child_by_field_name("name"))
-                    # build the FQN using the scopes in the stack
-                    scope = _text(name_node.child_by_field_name("scope"))
-                    fqn = f"{scope}::{name}"
-                else:
-                    fqn = build_fqn_cpp(stack, name)
-                
-                kind = get_kind(name, stack)
-                
-                records.append(Record(fqn=fqn, kind=kind, params_sig=params_sig,
-                                      start_point=node.start_point, end_point=node.end_point,
-                                      is_template=is_template_fn(node)))
-        
+                _classify_and_record(name_node, params_node, node, records, stack, seen, friend_flag=False)
+
+    elif node.type == "function_declarator":
+        if node.parent and node.parent.type == "function_definition":
+            return # skip since it's already handled in the function_definition case        
+        name_node = node.child_by_field_name("declarator")
+        params_node = node.child_by_field_name("parameters")
+        if name_node:
+            _classify_and_record(name_node, params_node, node, records, stack, seen, friend_flag=False)
+       
     for child in node.children:
-        walk_tree_cpp(child, records, stack)
+        walk_tree_cpp(child, records, stack, seen)
     
     if pushed:
         stack.pop() # pop the scope after processing the children
@@ -122,8 +147,9 @@ def parse_cpp_file(file_path: str) -> None:
     tree = parser.parse(code_bytes)
     records: list[Record] = []
     stack: deque[Scope] = deque()
+    seen: set[FuncSig] = set() # de-duplication
     stack.append(Scope(kind="global", name=""))
-    walk_tree_cpp(tree.root_node, records, stack)
+    walk_tree_cpp(tree.root_node, records, stack, seen)
     stack.pop()
     assert len(stack) == 0, "Stack should be empty after processing the tree"
     pprint(records)

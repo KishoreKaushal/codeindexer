@@ -85,10 +85,13 @@ def _classify_and_record(name_node, params_node, node, records, stack, seen, fri
         # build the FQN using the scopes in the stack
         scope = _text(name_node.child_by_field_name("scope"))
         fqn = f"{scope}::{name}"
+        kind = get_kind(name, stack)
+    elif name_node.type == "operator_name":
+        kind = "operator"
+        fqn = build_fqn_cpp(stack, name)
     else:
         fqn = build_fqn_cpp(stack, name)
-    
-    kind = get_kind(name, stack)
+        kind = get_kind(name, stack)
     
     func_sig = FuncSig(fqn=fqn, params_sig=params_sig)
     

@@ -39,3 +39,5 @@ namespace math {
 
 class Greeter { public: Greeter(int x); };
 Greeter::Greeter(int x) {} // out-of-line constructor definition
+
+struct Resource { Resource(){}  ~Resource(){} };  

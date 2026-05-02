@@ -97,6 +97,9 @@ def _classify_and_record(name_node, params_node, node, records, stack, seen, fri
     elif name_node.type == "operator_name":
         kind = "friend_operator" if friend_flag else "operator"
         fqn = build_fqn_cpp(stack, name, friend_flag=friend_flag)
+    elif name_node.type == "destructor_name":
+        kind = "dtor"
+        fqn = build_fqn_cpp(stack, name, friend_flag=friend_flag)
     else:
         fqn = build_fqn_cpp(stack, name, friend_flag=friend_flag)
         kind = "friend" if friend_flag else get_kind(name, stack)

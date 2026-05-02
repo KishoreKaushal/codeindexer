@@ -70,13 +70,16 @@ SCOPE_KIND = {
     STRUCT_SPECIFIER: "struct"
 }
 
-def build_fqn_cpp(stack: deque[Scope], name: str, friend_flag: bool = False) -> str:
+def build_fqn_cpp(stack: deque[Scope], name: str, extra_scopes: list[str] = None, friend_flag: bool = False) -> str:
     if friend_flag:
         # for friend functions, we only consider namespaces in the scope for FQN 
         # since they can't be referred to via class/struct scopes
         scopes = [s.name for s in stack if s.kind == "ns" and s.name]
     else:
         scopes = [s.name for s in stack if s.name]
+        
+    if extra_scopes:
+        scopes.extend(extra_scopes)
     
     return "::".join(scopes + [name]) \
         if scopes else f"::{name}" # if all scopes are anonymous, treat as global
@@ -88,9 +91,8 @@ def _classify_and_record(name_node, params_node, node, records, stack, seen, fri
     # handle qualified identifier separately
     if name_node.type == "qualified_identifier":
         name = _text(name_node.child_by_field_name("name"))
-        # build the FQN using the scopes in the stack
         scope = _text(name_node.child_by_field_name("scope"))
-        fqn = f"{scope}::{name}"
+        fqn = build_fqn_cpp(stack, name, extra_scopes=[scope], friend_flag=friend_flag)
         kind = "friend" if friend_flag else get_kind(name, stack)
     elif name_node.type == "operator_name":
         kind = "friend_operator" if friend_flag else "operator"

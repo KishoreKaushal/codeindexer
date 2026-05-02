@@ -30,7 +30,7 @@ class Record:
     
     def __repr__(self):
         tpl = " [template]" if self.is_template else ""
-        return f"{self.kind:<40} {self.fqn:<40} {self.params_sig}{tpl}"
+        return f"{self.kind:<40} {self.fqn:<50} {self.params_sig}{tpl}"
 
 # frozen makes hashable and slots saves memory -> go look chatgpt for more details
 @dataclass(frozen=True, slots=True)

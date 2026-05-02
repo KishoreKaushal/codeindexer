@@ -41,3 +41,9 @@ class Greeter { public: Greeter(int x); };
 Greeter::Greeter(int x) {} // out-of-line constructor definition
 
 struct Resource { Resource(){}  ~Resource(){} };  
+
+// test for nested anonymous namespaces
+namespace {
+    void annon_namespace_func() {}
+    namespace { void nested_annon_namespace_func() {} };
+}

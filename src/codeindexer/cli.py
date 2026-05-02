@@ -111,6 +111,16 @@ def _classify_and_record(name_node, params_node, node, records, stack, seen, fri
                             end_point=node.end_point,
                             is_template=is_template_fn(node)))
     seen.add(func_sig)
+    
+def get_anon_struct_name(node) -> str | None:
+    # heuristic to get the name of an anonymous struct/class:
+    # look for an identifier among the siblings of the node
+    # this works for cases like: "struct { ... } myVar;" or "class { ... } MyClass;"
+    if node.parent:
+        for sibling in node.parent.children:
+            if sibling.type == "identifier":
+                return _text(sibling)
+    return None
 
 def walk_tree_cpp(node, 
                   records: list[Record] = [], 
@@ -126,9 +136,12 @@ def walk_tree_cpp(node,
         name_node = node.child_by_field_name("name")
         
         if node.type != NAMESPACE_DEFINITION and not name_node:
-            return # skip anonymous classes/structs since they can't be referred to in the FQN
+            scope_name = get_anon_struct_name(node)
+            if scope_name is None:
+                return # skip if we can't determine a name for the anonymous struct/class
+        else:
+            scope_name = _text(name_node) if name_node else "(anon)" # empty = anonymous scope
         
-        scope_name = _text(name_node) if name_node else "(anon)" # empty = anonymous scope
         stack.append(Scope(kind=SCOPE_KIND[node.type], name=scope_name))
         pushed = True
     

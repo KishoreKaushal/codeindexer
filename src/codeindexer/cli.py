@@ -30,7 +30,7 @@ class Record:
     
     def __repr__(self):
         tpl = " [template]" if self.is_template else ""
-        return f"{self.kind:<10} {self.fqn:<40} {self.params_sig}{tpl}"
+        return f"{self.kind:<40} {self.fqn:<40} {self.params_sig}{tpl}"
 
 # frozen makes hashable and slots saves memory -> go look chatgpt for more details
 @dataclass(frozen=True, slots=True)
@@ -70,10 +70,16 @@ SCOPE_KIND = {
     STRUCT_SPECIFIER: "struct"
 }
 
-def build_fqn_cpp(stack: deque[Scope], name: str) -> str:
-    parts = [s.name for s in stack if s.name]
-    return "::".join(parts + [name]) \
-        if parts else f"::{name}" # if all scopes are anonymous, treat as global
+def build_fqn_cpp(stack: deque[Scope], name: str, friend_flag: bool = False) -> str:
+    if friend_flag:
+        # for friend functions, we only consider namespaces in the scope for FQN 
+        # since they can't be referred to via class/struct scopes
+        scopes = [s.name for s in stack if s.kind == "ns" and s.name]
+    else:
+        scopes = [s.name for s in stack if s.name]
+    
+    return "::".join(scopes + [name]) \
+        if scopes else f"::{name}" # if all scopes are anonymous, treat as global
 
 def _classify_and_record(name_node, params_node, node, records, stack, seen, friend_flag=False):
     name = _text(name_node)
@@ -85,13 +91,13 @@ def _classify_and_record(name_node, params_node, node, records, stack, seen, fri
         # build the FQN using the scopes in the stack
         scope = _text(name_node.child_by_field_name("scope"))
         fqn = f"{scope}::{name}"
-        kind = get_kind(name, stack)
+        kind = "friend" if friend_flag else get_kind(name, stack)
     elif name_node.type == "operator_name":
-        kind = "operator"
-        fqn = build_fqn_cpp(stack, name)
+        kind = "friend_operator" if friend_flag else "operator"
+        fqn = build_fqn_cpp(stack, name, friend_flag=friend_flag)
     else:
-        fqn = build_fqn_cpp(stack, name)
-        kind = get_kind(name, stack)
+        fqn = build_fqn_cpp(stack, name, friend_flag=friend_flag)
+        kind = "friend" if friend_flag else get_kind(name, stack)
     
     func_sig = FuncSig(fqn=fqn, params_sig=params_sig)
     
@@ -106,8 +112,16 @@ def _classify_and_record(name_node, params_node, node, records, stack, seen, fri
                             is_template=is_template_fn(node)))
     seen.add(func_sig)
 
-def walk_tree_cpp(node, records: list[Record] = [], stack: deque[Scope] = [], seen: set[FuncSig] = set()) -> None:
+def walk_tree_cpp(node, 
+                  records: list[Record] = [], 
+                  stack: deque[Scope] = [], 
+                  seen: set[FuncSig] = set(),
+                  friend_flag: bool = False) -> None:
     pushed = False
+    
+    if node.type == "friend_declaration":
+        friend_flag = True # set the flag to indicate we're inside a friend declaration
+    
     if node.type in CPP_SCOPE_NODES:
         name_node = node.child_by_field_name("name")
         
@@ -125,7 +139,7 @@ def walk_tree_cpp(node, records: list[Record] = [], stack: deque[Scope] = [], se
             params_node = decl.child_by_field_name("parameters")
             
             if name_node:
-                _classify_and_record(name_node, params_node, node, records, stack, seen, friend_flag=False)
+                _classify_and_record(name_node, params_node, node, records, stack, seen, friend_flag=friend_flag)
 
     elif node.type == "function_declarator":
         if node.parent and node.parent.type == "function_definition":
@@ -133,10 +147,10 @@ def walk_tree_cpp(node, records: list[Record] = [], stack: deque[Scope] = [], se
         name_node = node.child_by_field_name("declarator")
         params_node = node.child_by_field_name("parameters")
         if name_node:
-            _classify_and_record(name_node, params_node, node, records, stack, seen, friend_flag=False)
+            _classify_and_record(name_node, params_node, node, records, stack, seen, friend_flag=friend_flag)
        
     for child in node.children:
-        walk_tree_cpp(child, records, stack, seen)
+        walk_tree_cpp(child, records, stack, seen, friend_flag=friend_flag)
     
     if pushed:
         stack.pop() # pop the scope after processing the children

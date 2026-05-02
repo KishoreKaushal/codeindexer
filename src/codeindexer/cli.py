@@ -22,10 +22,38 @@ class Scope:
 @dataclass 
 class Record:
     fqn: str # fully qualified name, e.g. "math::Adder::sum"
+    kind: str # "method" | "frunction" | "ctor"
+    params_sig: str = "" # e.g. "(int, int)" for sum(int a, int b)
+    start_point: tuple[int, int] = (0, 0) # (line, column)
+    end_point: tuple[int, int] = (0, 0)
+    is_template: bool = False # whether it's a template function/method
+    
+    def __repr__(self):
+        tpl = " [template]" if self.is_template else ""
+        return f"{self.kind:<10} {self.fqn:<40} {self.params_sig}{tpl}"
+
+
+def get_kind(name: str, stack: deque[Scope]) -> str:
+    # brief logic: look from start of the scope 
+    # if the current kind is either class or struct and the name matches
+    # => ctor, else method 
+    # no class/struct => function
+    for s in reversed(stack):
+        # remember that in a C++ code stack 
+        # stack will of of form: [ns*, class/struct*]
+        # as there is no namespace inside class/struct
+        if s.kind in ("class", "struct"): 
+            if s.name == name:
+                return "ctor"
+            return "method"
+    return "function"
+
 
 def _text(node) -> str:
     return node.text.decode('utf-8') if node else "" # safe extraction
 
+def is_template_fn(node) -> bool:
+    return node.parent and node.parent.type == "template_declaration"
 
 NAMESPACE_DEFINITION = "namespace_definition"
 CLASS_SPECIFIER = "class_specifier"
@@ -57,10 +85,27 @@ def walk_tree_cpp(node, records: list[Record] = [], stack: deque[Scope] = []):
     if node.type == "function_definition":
         decl = node.child_by_field_name("declarator")
         if decl:
-            node_name = decl.child_by_field_name("declarator")
-            if node_name:
-                fqn = build_fqn_cpp(stack, _text(node_name))
-                records.append(Record(fqn=fqn))
+            name_node = decl.child_by_field_name("declarator")
+            params_node = decl.child_by_field_name("parameters")
+            
+            if name_node:
+                name = _text(name_node)
+                params_sig = _text(params_node) if params_node else "()"
+                
+                # handle qualified identifier separately
+                if name_node.type == "qualified_identifier":
+                    name = _text(name_node.child_by_field_name("name"))
+                    # build the FQN using the scopes in the stack
+                    scope = _text(name_node.child_by_field_name("scope"))
+                    fqn = f"{scope}::{name}"
+                else:
+                    fqn = build_fqn_cpp(stack, name)
+                
+                kind = get_kind(name, stack)
+                
+                records.append(Record(fqn=fqn, kind=kind, params_sig=params_sig,
+                                      start_point=node.start_point, end_point=node.end_point,
+                                      is_template=is_template_fn(node)))
         
     for child in node.children:
         walk_tree_cpp(child, records, stack)

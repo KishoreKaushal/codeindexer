@@ -1,49 +1,26 @@
-int sum(int a, int b); // declaration 
+#include <iostream>
 
-int sum(int a, int b) {
-    return a + b;
-}
+struct { int x; void foo_x(); } TestStructType;
+struct { int x; void boo_y(); } A, B, C;
+struct Node { int value; int get_value() {return value;} };
 
-int main() {
-    return 0;
-}
+int main() { return 0; }
+int sum(int a, int b) { return a + b; }
 
 namespace math {
 class Adder {
 public:
-    Adder(int base) {} // kind must be ctor, not function
-
-    int sum(int x) { // must be detected as math::Adder::sum => fully qualified name
-        return x;
-    } 
-    
-    int sum(int x, int y);
-
-    int method(); // declaration only
+    Adder(int base) {}
+    int sum(int x) { return x; } 
+    int sum(int x, int y) { return x + y; }
     friend std::ostream& operator<<(std::ostream& os, const Adder& a){
         return os << "Adder";
     }
-
-    template<typename T> T multiply(T a, T b) { // template method
-        return a * b;
-    }
+    template<typename T> T multiply(T a, T b) { return a * b; }
 };
-
-Adder::method() { return 42; } // out-of-line-definition 
-
-
-Adder::sum(int x, int y) { // overload, can be distinguished from other sum
-    return x + y;
-}
-
 } // namespace math
 
-namespace {
-    void foo() { // must be detected as (annon)::foo => fully qualified name with anonymous namespace
-    }
-}
+namespace { void foo() {} }
 
-struct {
-    void bar() { // must be detected as A::bar => fully qualified name with anonymous struct
-    }
-} A;
+int math::Adder::sum(int x);
+void helper(double x) {}

@@ -25,6 +25,10 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const Adder& a){
         return os << "Adder";
     }
+
+    template<typename T> T multiply(T a, T b) { // template method
+        return a * b;
+    }
 };
 
 Adder::method() { return 42; }

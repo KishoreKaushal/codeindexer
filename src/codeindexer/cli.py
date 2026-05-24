@@ -11,6 +11,7 @@ def get_argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Code Indexer CLI")
     parser.add_argument("--version", action="version", version=VERSION)
     parser.add_argument("--cpp", required=True, help="Path to the *.cpp file to index")
+    parser.add_argument("--query", action="store_true", help="Use query based parsing")
     # Add arguments here as needed
     return parser
 
@@ -194,7 +195,12 @@ def main() -> None:
     parser = get_argparser()
     args = parser.parse_args()
     if args.cpp:
-        parse_cpp_file(args.cpp)
+        if args.query:
+            from codeindexer.run_query import parse_file
+            result = parse_file(args.cpp)
+            pprint(result)
+        else:
+            parse_cpp_file(args.cpp)
 
 if __name__ == "__main__":
     main()

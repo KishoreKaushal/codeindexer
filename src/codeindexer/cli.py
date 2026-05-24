@@ -2,6 +2,7 @@ import argparse
 from collections import deque
 from dataclasses import dataclass
 from pprint import pprint
+from rich import print
 import tree_sitter_cpp as tscpp
 from tree_sitter import Language, Parser
 
@@ -198,7 +199,13 @@ def main() -> None:
         if args.query:
             from codeindexer.run_query import parse_file
             result = parse_file(args.cpp)
-            pprint(result)
+            # pprint(result)
+            caps = result["captures"]
+            for cap_name, nodes in sorted(caps.items()):
+                print(f"@{cap_name}: {len(nodes)} matches")
+                for n in nodes:
+                    print(f"    [{n.start_point[0] + 1}, {n.start_point[1]+1}] {n.text.decode()[:60]}")
+            
         else:
             parse_cpp_file(args.cpp)
 

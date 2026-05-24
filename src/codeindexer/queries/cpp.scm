@@ -18,3 +18,17 @@
 ; Named ns already matched above.
 (namespace_definition
   !name) @scope.ns.anon
+
+; [...]  =  alternation — match either type
+; field_identifier = in-class member names
+; identifier = free function / outer scope names
+(function_definition
+  declarator: (function_declarator
+    declarator: 
+    [
+      (identifier)       @name.plain
+      (field_identifier) @name.plain
+    ]
+    parameters: (parameter_list) @params)
+  body: (compound_statement) @body)
+  @fn.plain

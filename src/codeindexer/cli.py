@@ -202,7 +202,7 @@ def main() -> None:
             # pprint(result)
             caps = result["captures"]
             for cap_name, nodes in sorted(caps.items()):
-                print(f"@{cap_name}: {len(nodes)} matches")
+                print(f"[bold italic cyan]@{cap_name}[/bold italic cyan]: {len(nodes)} matches")
                 for n in nodes:
                     print(f"    [{n.start_point[0] + 1}, {n.start_point[1]+1}] {n.text.decode()[:60]}")
             

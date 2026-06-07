@@ -32,3 +32,27 @@
     parameters: (parameter_list) @params)
   body: (compound_statement) @body)
   @fn.plain
+
+; math::Subber::sub, Greeter::Greeter
+(function_definition
+  declarator: (function_declarator
+    declarator: (qualified_identifier) @name.qual
+    parameters: (parameter_list) @params)
+  body: (compound_statement)) @fn.qualified
+
+; ~Resource
+(function_definition
+  declarator: (function_declarator
+    declarator: (destructor_name) @name.dtor
+    parameters: (parameter_list) @params)
+  body: (compound_statement)) @fn.dtor
+
+; friend ostream& operator<<(...)
+; T& return wraps fn_declarator in reference_declarator!
+(function_definition
+  declarator: (reference_declarator
+    (function_declarator
+      declarator: (operator_name) @name.refop
+      parameters: (parameter_list) @params))
+  body: (compound_statement)) @fn.refop
+

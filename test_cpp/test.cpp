@@ -44,6 +44,13 @@ struct Resource { Resource(){}  ~Resource(){} };
 
 // test for nested anonymous namespaces
 namespace {
+
+    // this is an example comment, which needs to get attached with `annon_namespace_func`
+
+
     void annon_namespace_func() {}
+    
+    
+    // this is an example comment gain but it shouldnt get attached with `annnested_annon_namespace_func`
     namespace { void nested_annon_namespace_func() {} };
 }

@@ -197,15 +197,25 @@ def main() -> None:
     args = parser.parse_args()
     if args.cpp:
         if args.query:
-            from codeindexer.run_query import parse_file
+            from codeindexer.run_query import parse_file, attach_docstrings, FN_CAPTURE_KEYS
             result = parse_file(args.cpp)
             # pprint(result)
             caps = result["captures"]
+            src = result["src"]
+            
             for cap_name, nodes in sorted(caps.items()):
                 print(f"[bold italic cyan]@{cap_name}[/bold italic cyan]: {len(nodes)} matches")
                 for n in nodes:
                     print(f"    [{n.start_point[0] + 1}, {n.start_point[1]+1}] {n.text.decode()[:60]}")
             
+            fn_captures = [n for k in FN_CAPTURE_KEYS for n in caps.get(k, [])]
+            fn_captures = sorted(fn_captures, key=lambda n: n.start_byte)
+            docstrings = attach_docstrings(caps, fn_captures, src)
+            print(docstrings)
+            
+            for fn in fn_captures:
+                ds = docstrings.get(fn.start_byte) or "<no docstring found>"
+                print(f"  L{fn.start_point[0]+1}: {ds}")
         else:
             parse_cpp_file(args.cpp)
 

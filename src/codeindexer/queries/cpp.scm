@@ -56,3 +56,28 @@
       parameters: (parameter_list) @params))
   body: (compound_statement)) @fn.refop
 
+; Methods declared (no body) inside struct/class:
+;   struct { void foo_x(); } TestStructType;
+;   class Subber { public: int sub(int x); };
+; These are field_declaration nodes, NOT function_definition.
+(field_declaration
+  declarator: (function_declarator
+    declarator: (field_identifier) @name.field_decl
+    parameters: (parameter_list) @params.field_decl))
+  @fn.field_decl
+
+; Capture wrapper nodes — byte ranges only
+(template_declaration) @mod.template
+(friend_declaration)   @mod.friend
+
+; Forward decl lives under `declaration` (no body!)
+; Not `function_definition` — those require compound_statement.
+; Only qualified ones: int math::Adder::sum(int x);
+(declaration
+  declarator: (function_declarator
+    declarator: (qualified_identifier) @name.decl.qual
+    parameters: (parameter_list) @params.decl))
+  @fn.decl
+
+; Matches //  /* */  /** Doxygen */ equally
+(comment) @comment

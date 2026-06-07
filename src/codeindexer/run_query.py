@@ -126,6 +126,27 @@ def _collect_scopes(captures):
     scopes.sort(key=lambda s: s[0])
     return scopes
 
+def build_scope_kind_table(captures):
+    table = {}
+    for cap_name, kind in (
+        ("scope.ns.name",     "ns"),
+        ("scope.class.name",  "class"),
+        ("scope.struct.name", "struct"),
+    ):
+        for node in captures.get(cap_name, []):
+            table[_text(node)] = kind
+    return table
+
+def _build_fqn(enclosing, name,
+               scope_kind_table, extra_scopes=None):
+    parts = [n for _, n in enclosing]
+    if extra_scopes:
+        parts.extend(extra_scopes)
+    parts.append(name)
+    if not parts[:-1]:
+        return f"::{name}"   # global — prepend ::
+    return "::".join(parts)
+
 def load_query(language: Language,
                lang_name: str) -> Query:
     scm = QUERIES_DIR / f"{lang_name}.scm"
@@ -141,3 +162,30 @@ def parse_file(file_path: str) -> dict:
     caps = QueryCursor(query).captures(tree.root_node)
     return {"lang": "cpp", "src": src,
             "tree": tree, "captures": caps}
+    
+def bind_captures(captures, scope_kind_table,
+                  src: bytes) -> list[Record]:
+    scopes    = _collect_scopes(captures)
+    templates = captures.get("mod.template", [])
+    friends   = captures.get("mod.friend",   [])
+
+    # collect ALL fn nodes across every capture key
+    # so attach_docstrings sees the full set
+    all_fn_nodes = [
+        n for k in FN_CAPTURE_KEYS
+        for n in captures.get(k, [])
+    ]
+    docstrings = attach_docstrings(captures, all_fn_nodes, src)
+
+    seen    = set()    # (fqn, params_sig) — dedup key
+    records = []
+
+    # --- fn.plain loop (next slide) ---
+    # --- fn.qualified loop           ---
+    # --- fn.dtor loop                ---
+    # --- fn.operator loop            ---
+    # --- fn.refop loop               ---
+    # --- fn.decl loop                ---
+    # --- fn.field_decl loop          ---
+
+    return records

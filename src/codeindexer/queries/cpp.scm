@@ -47,6 +47,13 @@
     parameters: (parameter_list) @params)
   body: (compound_statement)) @fn.dtor
 
+; operator (by-value return)
+(function_definition
+  declarator: (function_declarator
+    declarator: (operator_name) @name.operator
+    parameters: (parameter_list) @params)
+  body: (compound_statement)) @fn.operator
+
 ; friend ostream& operator<<(...)
 ; T& return wraps fn_declarator in reference_declarator!
 (function_definition

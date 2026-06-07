@@ -13,6 +13,7 @@ FN_CAPTURE_KEYS = [
     "fn.refop",
     "fn.field_decl",
     "fn.decl",
+    "fn.operator"
 ]
 
 def _is_inside_any(fn_node, mod_nodes):

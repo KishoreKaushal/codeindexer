@@ -13,6 +13,9 @@ public:
     Adder(int base) {}
     int sum(int x) { return x; } 
     int sum(int x, int y) { return x + y; }
+
+    int operator+(int a, int b) { return a + b; }
+
     friend std::ostream& operator<<(std::ostream& os, const Adder& a){
         return os << "Adder";
     }

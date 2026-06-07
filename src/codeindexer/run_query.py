@@ -2,19 +2,35 @@ from pathlib import Path
 from tree_sitter import Language, Parser
 from tree_sitter._binding import Query, QueryCursor
 import tree_sitter_cpp as tscpp
+from dataclasses import dataclass
 
 QUERIES_DIR = Path(__file__).parent / "queries"
 
+FN_CAPTURE_KEYS = (
+    "fn.plain", "fn.qualified", "fn.dtor",
+    "fn.refop", "fn.operator", "fn.decl",
+    "fn.field_decl"
+)
 
-FN_CAPTURE_KEYS = [
-    "fn.plain",
-    "fn.qualified",
-    "fn.dtor",
-    "fn.refop",
-    "fn.field_decl",
-    "fn.decl",
-    "fn.operator"
-]
+@dataclass
+class Record:
+    fqn:          str
+    kind:         str
+    params_sig:   str   = ""
+    start_point:  tuple = (0, 0)
+    end_point:    tuple = (0, 0)
+    is_template:  bool  = False
+    is_definition: bool = True
+    docstring:    str | None = None
+
+    def __repr__(self):
+        tpl  = " :template: " if self.is_template  else ""
+        decl = " :decl: "     if not self.is_definition else ""
+        return (f"{self.kind:<40} {self.fqn:<50}"
+                f" {self.params_sig}{tpl}{decl}")
+
+def _text(node) -> str:
+    return node.text.decode("utf-8") if node else ""
 
 def _is_inside_any(fn_node, mod_nodes):
     for mod in mod_nodes:

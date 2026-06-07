@@ -87,6 +87,45 @@ def attach_docstrings(captures, fn_captures, src: bytes):
             break
     return out
 
+def _anon_scope_name(node):
+    # Walk parent's children for identifier sibling.
+    # struct { ... } TestStructType; → "TestStructType"
+    if not node.parent:
+        return "(anon)"
+    for sibling in node.parent.children:
+        if sibling.type == "identifier":
+            return _text(sibling)
+    return "(anon)"
+
+def _collect_scopes(captures):
+    scopes = []
+    for cap_name, kind in (
+        ("scope.ns",     "ns"),
+        ("scope.class",  "class"),
+        ("scope.struct", "struct"),
+    ):
+        for node in captures.get(cap_name, []):
+            name_node = node.child_by_field_name("name")
+            name = (_text(name_node) if name_node
+                    else _anon_scope_name(node))
+            scopes.append((node.start_byte, node.end_byte,
+                           kind, name))
+
+    for cap_name, kind in (
+        ("scope.struct.anon", "struct"),
+        ("scope.class.anon",  "class"),
+    ):
+        for node in captures.get(cap_name, []):
+            scopes.append((node.start_byte, node.end_byte,
+                           kind, _anon_scope_name(node)))
+
+    for node in captures.get("scope.ns.anon", []):
+        scopes.append((node.start_byte, node.end_byte,
+                       "ns", "(anon)"))
+
+    scopes.sort(key=lambda s: s[0])
+    return scopes
+
 def load_query(language: Language,
                lang_name: str) -> Query:
     scm = QUERIES_DIR / f"{lang_name}.scm"

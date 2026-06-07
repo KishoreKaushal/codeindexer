@@ -88,3 +88,7 @@
 
 ; Matches //  /* */  /** Doxygen */ equally
 (comment) @comment
+
+; struct/class without a name: field
+(struct_specifier !name) @scope.struct.anon
+(class_specifier  !name) @scope.class.anon

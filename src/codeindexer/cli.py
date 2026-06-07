@@ -197,7 +197,7 @@ def main() -> None:
     args = parser.parse_args()
     if args.cpp:
         if args.query:
-            from codeindexer.run_query import parse_file, attach_docstrings, FN_CAPTURE_KEYS
+            from codeindexer.run_query import parse_file, attach_docstrings, FN_CAPTURE_KEYS, _collect_scopes
             result = parse_file(args.cpp)
             # pprint(result)
             caps = result["captures"]
@@ -216,6 +216,8 @@ def main() -> None:
             for fn in fn_captures:
                 ds = docstrings.get(fn.start_byte) or "<no docstring found>"
                 print(f"  L{fn.start_point[0]+1}: {ds}")
+                
+            print(_collect_scopes(caps))
         else:
             parse_cpp_file(args.cpp)
 

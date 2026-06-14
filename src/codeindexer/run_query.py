@@ -167,12 +167,29 @@ def parse_file(file_path: str) -> dict:
 def _enclosing_scopes(scopes, start_byte, end_byte):
     return [(kind, name) for s, e, kind, name in scopes if s <= start_byte <= end_byte <= e]
 
-def _classify_kind(name, enclosing, scope_kind_table):
+def _classify_kind(name, enclosing, scope_kind_table, extra_scopes=None):
+    if extra_scopes:
+        tail = extra_scopes[-1] 
+        tail_kind = scope_kind_table.get(tail) 
+        if tail_kind in ("class", "struct"):
+            return "ctor" if name == tail else "method"
+        return "free_fn"
+        
     for kind, scope_name in reversed(enclosing):
         if kind in ("class", "struct"):
             return "ctor" if name == scope_name else "method"
         
     return "free_fn"
+
+def _split_qualified(name_node):
+    parts = []
+    node = name_node
+    while node.type == "qualified_identifier":
+        scope = node.child_by_field_name("scope")
+        parts.append(_text(scope))
+        node = node.child_by_field_name("name")
+    
+    return parts, _text(node)
     
 def bind_captures(captures, scope_kind_table,
                   src: bytes) -> list[Record]:
@@ -234,21 +251,41 @@ def bind_captures(captures, scope_kind_table,
             is_definition=True,
             docstring=docstrings.get(fn_node.start_byte)
         ))
-        
-        
-        
-        pass
     
-    return records
+
         
     # --- fn.qualified loop           ---
     for fn_node in captures.get("fn.qualified", []):
+        # X::Y::z()
         name_node = __extract_capture_internal_to_fn_node(fn_node, "name.qual")
         if not name_node: continue
         params_node = __extract_capture_internal_to_fn_node(fn_node, "params")
         params_sig = _text(params_node) if params_node else "()"
-        name = _text(name_node)
-        pass
+        extra_scopes, name = _split_qualified(name_node)
+        
+        enclosing = _enclosing_scopes(scopes, fn_node.start_byte, fn_node.end_byte)
+        is_template = _is_inside_any(fn_node, templates)
+        
+        kind = _classify_kind(name, enclosing, scope_kind_table, extra_scopes=extra_scopes)
+        fqn = _build_fqn(enclosing, name, scope_kind_table, extra_scopes=extra_scopes)
+        
+        sig = (fqn, params_sig)
+        if sig in seen:
+            continue
+        seen.add(sig)
+        
+        records.append(Record(
+            fqn=fqn,
+            kind=kind,
+            params_sig=params_sig,
+            start_point=fn_node.start_point,
+            end_point=fn_node.end_point,
+            is_template=is_template,
+            is_definition=True,
+            docstring=docstrings.get(fn_node.start_byte)
+        ))
+        
+    return records
     
     # --- fn.dtor loop                ---
     for fn_node in captures.get("fn.dtor", []):

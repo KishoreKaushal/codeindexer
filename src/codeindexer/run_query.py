@@ -180,32 +180,69 @@ def bind_captures(captures, scope_kind_table,
     seen    = set()    # (fqn, params_sig) — dedup key
     records = []
 
+
+    def __extract_capture_internal_to_fn_node(fn, name_cap_keys):
+        name_node = next(
+            (n for n in captures.get(name_cap_keys, []) if (fn.start_byte <= n.start_byte <= n.end_byte <= fn.end_byte)),
+            None
+        )
+        return name_node
+
     # --- fn.plain loop (next slide) ---
     for fn_node in captures.get("fn.plain", []):
+        name_node = __extract_capture_internal_to_fn_node(fn_node, "name.plain")
+        if not name_node: continue
+        params_node = __extract_capture_internal_to_fn_node(fn_node, "params")
+        params_sig = _text(params_node) if params_node else "()"
+        
         pass
         
     # --- fn.qualified loop           ---
     for fn_node in captures.get("fn.qualified", []):
+        name_node = __extract_capture_internal_to_fn_node(fn_node, "name.qual")
+        if not name_node: continue
+        params_node = __extract_capture_internal_to_fn_node(fn_node, "params")
+        params_sig = _text(params_node) if params_node else "()"
         pass
     
     # --- fn.dtor loop                ---
     for fn_node in captures.get("fn.dtor", []):
+        name_node = __extract_capture_internal_to_fn_node(fn_node, "name.dtor")
+        if not name_node: continue
+        params_node = __extract_capture_internal_to_fn_node(fn_node, "params")
+        params_sig = _text(params_node) if params_node else "()"
         pass
     
     # --- fn.operator loop            ---
     for fn_node in captures.get("fn.operator", []):
+        name_node = __extract_capture_internal_to_fn_node(fn_node, "name.operator")
+        if not name_node: continue
+        params_node = __extract_capture_internal_to_fn_node(fn_node, "params")
+        params_sig = _text(params_node) if params_node else "()"
         pass
     
     # --- fn.refop loop               ---
     for fn_node in captures.get("fn.refop", []):
+        name_node = __extract_capture_internal_to_fn_node(fn_node, "name.refop")
+        if not name_node: continue
+        params_node = __extract_capture_internal_to_fn_node(fn_node, "params")
+        params_sig = _text(params_node) if params_node else "()"
         pass
     
     # --- fn.decl loop                ---
     for fn_node in captures.get("fn.decl", []):
+        name_node = __extract_capture_internal_to_fn_node(fn_node, "name.decl.qual")
+        if not name_node: continue
+        params_node = __extract_capture_internal_to_fn_node(fn_node, "params.decl")
+        params_sig = _text(params_node) if params_node else "()"
         pass
     
     # --- fn.field_decl loop          ---
     for fn_node in captures.get("fn.field_decl", []):
+        name_node = __extract_capture_internal_to_fn_node(fn_node, "name.field_decl")
+        if not name_node: continue
+        params_node = __extract_capture_internal_to_fn_node(fn_node, "params.field_decl")
+        params_sig = _text(params_node) if params_node else "()"
         pass
 
     return records

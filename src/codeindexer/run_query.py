@@ -181,11 +181,31 @@ def bind_captures(captures, scope_kind_table,
     records = []
 
     # --- fn.plain loop (next slide) ---
+    for fn_node in captures.get("fn.plain", []):
+        pass
+        
     # --- fn.qualified loop           ---
+    for fn_node in captures.get("fn.qualified", []):
+        pass
+    
     # --- fn.dtor loop                ---
+    for fn_node in captures.get("fn.dtor", []):
+        pass
+    
     # --- fn.operator loop            ---
+    for fn_node in captures.get("fn.operator", []):
+        pass
+    
     # --- fn.refop loop               ---
+    for fn_node in captures.get("fn.refop", []):
+        pass
+    
     # --- fn.decl loop                ---
+    for fn_node in captures.get("fn.decl", []):
+        pass
+    
     # --- fn.field_decl loop          ---
+    for fn_node in captures.get("fn.field_decl", []):
+        pass
 
     return records

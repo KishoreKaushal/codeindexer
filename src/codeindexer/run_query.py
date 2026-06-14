@@ -163,6 +163,17 @@ def parse_file(file_path: str) -> dict:
     return {"lang": "cpp", "src": src,
             "tree": tree, "captures": caps}
     
+    
+def _enclosing_scopes(scopes, start_byte, end_byte):
+    return [(kind, name) for s, e, kind, name in scopes if s <= start_byte <= end_byte <= e]
+
+def _classify_kind(name, enclosing, scope_kind_table):
+    for kind, scope_name in reversed(enclosing):
+        if kind in ("class", "struct"):
+            return "ctor" if name == scope_name else "method"
+        
+    return "free_fn"
+    
 def bind_captures(captures, scope_kind_table,
                   src: bytes) -> list[Record]:
     scopes    = _collect_scopes(captures)
@@ -194,8 +205,41 @@ def bind_captures(captures, scope_kind_table,
         if not name_node: continue
         params_node = __extract_capture_internal_to_fn_node(fn_node, "params")
         params_sig = _text(params_node) if params_node else "()"
+        name = _text(name_node)
+        
+        enclosing = _enclosing_scopes(scopes, fn_node.start_byte, fn_node.end_byte)
+        is_template = _is_inside_any(fn_node, templates)
+        is_friend = _is_inside_any(fn_node, friends)
+        
+        if is_friend:
+            kind = "friend_operator" if name_node.type == "operator_name" else "friend"
+            ns_enclosing = [(k, n) for k, n in enclosing if k == "ns"]
+            fqn = _build_fqn(ns_enclosing, name, scope_kind_table)
+        else:
+            kind = _classify_kind(name, enclosing, scope_kind_table)
+            fqn = _build_fqn(enclosing, name, scope_kind_table)
+            
+        sig = (fqn, params_sig)
+        if sig in seen:
+            continue
+        seen.add(sig)
+        
+        records.append(Record(
+            fqn=fqn,
+            kind=kind,
+            params_sig=params_sig,
+            start_point=fn_node.start_point,
+            end_point=fn_node.end_point,
+            is_template=is_template,
+            is_definition=True,
+            docstring=docstrings.get(fn_node.start_byte)
+        ))
+        
+        
         
         pass
+    
+    return records
         
     # --- fn.qualified loop           ---
     for fn_node in captures.get("fn.qualified", []):
@@ -203,6 +247,7 @@ def bind_captures(captures, scope_kind_table,
         if not name_node: continue
         params_node = __extract_capture_internal_to_fn_node(fn_node, "params")
         params_sig = _text(params_node) if params_node else "()"
+        name = _text(name_node)
         pass
     
     # --- fn.dtor loop                ---
@@ -211,6 +256,7 @@ def bind_captures(captures, scope_kind_table,
         if not name_node: continue
         params_node = __extract_capture_internal_to_fn_node(fn_node, "params")
         params_sig = _text(params_node) if params_node else "()"
+        name = _text(name_node)
         pass
     
     # --- fn.operator loop            ---
@@ -219,6 +265,7 @@ def bind_captures(captures, scope_kind_table,
         if not name_node: continue
         params_node = __extract_capture_internal_to_fn_node(fn_node, "params")
         params_sig = _text(params_node) if params_node else "()"
+        name = _text(name_node)
         pass
     
     # --- fn.refop loop               ---
@@ -227,6 +274,7 @@ def bind_captures(captures, scope_kind_table,
         if not name_node: continue
         params_node = __extract_capture_internal_to_fn_node(fn_node, "params")
         params_sig = _text(params_node) if params_node else "()"
+        name = _text(name_node)
         pass
     
     # --- fn.decl loop                ---
@@ -235,6 +283,7 @@ def bind_captures(captures, scope_kind_table,
         if not name_node: continue
         params_node = __extract_capture_internal_to_fn_node(fn_node, "params.decl")
         params_sig = _text(params_node) if params_node else "()"
+        name = _text(name_node)
         pass
     
     # --- fn.field_decl loop          ---
@@ -243,6 +292,7 @@ def bind_captures(captures, scope_kind_table,
         if not name_node: continue
         params_node = __extract_capture_internal_to_fn_node(fn_node, "params.field_decl")
         params_sig = _text(params_node) if params_node else "()"
+        name = _text(name_node)
         pass
 
     return records

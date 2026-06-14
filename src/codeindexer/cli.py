@@ -198,7 +198,7 @@ def main() -> None:
     if args.cpp:
         if args.query:
             from codeindexer.run_query import (
-                parse_file, attach_docstrings, FN_CAPTURE_KEYS, _collect_scopes, build_scope_kind_table)
+                parse_file, attach_docstrings, FN_CAPTURE_KEYS, _collect_scopes, build_scope_kind_table, bind_captures)
             result = parse_file(args.cpp)
             # pprint(result)
             caps = result["captures"]
@@ -219,8 +219,12 @@ def main() -> None:
                 print(f"  L{fn.start_point[0]+1}: {ds}")
                 
             print(_collect_scopes(caps))
+            scope_kind_table = build_scope_kind_table(caps)
+            print(scope_kind_table)
+            records = bind_captures(caps, scope_kind_table, src)
             
-            print(build_scope_kind_table(caps))
+            print(records)
+            
         else:
             parse_cpp_file(args.cpp)
 

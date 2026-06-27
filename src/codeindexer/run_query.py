@@ -407,8 +407,6 @@ def bind_captures(captures, scope_kind_table,
             is_definition=False,
             docstring=docstrings.get(fn_node.start_byte)
         ))
-        
-    return records
     
     # --- fn.field_decl loop          ---
     for fn_node in captures.get("fn.field_decl", []):
@@ -417,6 +415,24 @@ def bind_captures(captures, scope_kind_table,
         params_node = __extract_capture_internal_to_fn_node(fn_node, "params.field_decl")
         params_sig = _text(params_node) if params_node else "()"
         name = _text(name_node)
-        pass
+        
+        enclosing = _enclosing_scopes(scopes, fn_node.start_byte, fn_node.end_byte)
+        fqn = _build_fqn(enclosing, name, scope_kind_table)
+        
+        
+        sig = (fqn, params_sig)
+        if sig in seen:
+            continue
+        
+        records.append(Record(
+            fqn=fqn,
+            kind="method",
+            params_sig=params_sig,
+            start_point=fn_node.start_point,
+            end_point=fn_node.end_point,
+            is_template=False,
+            is_definition=False,
+            docstring=docstrings.get(fn_node.start_byte)
+        ))
 
     return records

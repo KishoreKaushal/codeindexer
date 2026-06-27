@@ -22,7 +22,8 @@
 
             "args": [
                 "--cpp",
-                "test_cpp/test.cpp"
+                "test_cpp/test.cpp",
+                "--query"
             ]
         }
     ]

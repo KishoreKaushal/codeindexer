@@ -285,7 +285,7 @@ def bind_captures(captures, scope_kind_table,
             docstring=docstrings.get(fn_node.start_byte)
         ))
         
-    return records
+
     
     # --- fn.dtor loop                ---
     for fn_node in captures.get("fn.dtor", []):
@@ -294,7 +294,27 @@ def bind_captures(captures, scope_kind_table,
         params_node = __extract_capture_internal_to_fn_node(fn_node, "params")
         params_sig = _text(params_node) if params_node else "()"
         name = _text(name_node)
-        pass
+        
+        enclosing = _enclosing_scopes(scopes, fn_node.start_byte, fn_node.end_byte)
+        fqn = _build_fqn(enclosing, name, scope_kind_table)
+        
+        sig = (fqn, params_sig)
+        if sig in seen:
+            continue
+        seen.add(sig)
+        
+        records.append(Record(
+            fqn=fqn,
+            kind="dtor",
+            params_sig=params_sig,
+            start_point=fn_node.start_point,
+            end_point=fn_node.end_point,
+            is_template=False,
+            is_definition=True,
+            docstring=docstrings.get(fn_node.start_byte)
+        ))
+    
+    
     
     # --- fn.operator loop            ---
     for fn_node in captures.get("fn.operator", []):
@@ -303,7 +323,26 @@ def bind_captures(captures, scope_kind_table,
         params_node = __extract_capture_internal_to_fn_node(fn_node, "params")
         params_sig = _text(params_node) if params_node else "()"
         name = _text(name_node)
-        pass
+        
+        enclosing = _enclosing_scopes(scopes, fn_node.start_byte, fn_node.end_byte)
+        fqn = _build_fqn(enclosing, name, scope_kind_table)
+        
+        sig = (fqn, params_sig)
+        if sig in seen:
+            continue
+        seen.add(sig)
+        
+        records.append(Record(
+            fqn=fqn,
+            kind="operator",
+            params_sig=params_sig,
+            start_point=fn_node.start_point,
+            end_point=fn_node.end_point,
+            is_template=False,
+            is_definition=True,
+            docstring=docstrings.get(fn_node.start_byte)
+        ))
+    
     
     # --- fn.refop loop               ---
     for fn_node in captures.get("fn.refop", []):
@@ -312,16 +351,64 @@ def bind_captures(captures, scope_kind_table,
         params_node = __extract_capture_internal_to_fn_node(fn_node, "params")
         params_sig = _text(params_node) if params_node else "()"
         name = _text(name_node)
-        pass
+        
+        enclosing = _enclosing_scopes(scopes, fn_node.start_byte, fn_node.end_byte)
+        is_friend = _is_inside_any(fn_node, friends)
+        kind = "friend_refop" if is_friend else "refop"
+        
+        ns_enclosing = [(k, n) for k, n in enclosing if k == "ns"]
+        
+        fqn = _build_fqn(ns_enclosing, name, scope_kind_table)
+        
+        sig = (fqn, params_sig)
+        if sig in seen:
+            continue
+        seen.add(sig)
+        
+        records.append(Record(
+            fqn=fqn,
+            kind=kind,
+            params_sig=params_sig,
+            start_point=fn_node.start_point,
+            end_point=fn_node.end_point,
+            is_template=False,
+            is_definition=True,
+            docstring=docstrings.get(fn_node.start_byte)
+        ))
+
     
     # --- fn.decl loop                ---
     for fn_node in captures.get("fn.decl", []):
-        name_node = __extract_capture_internal_to_fn_node(fn_node, "name.decl.qual")
+        name_node = __extract_capture_internal_to_fn_node(fn_node, "name.decl")
         if not name_node: continue
         params_node = __extract_capture_internal_to_fn_node(fn_node, "params.decl")
         params_sig = _text(params_node) if params_node else "()"
         name = _text(name_node)
-        pass
+        
+        is_qualified = name_node.type == "qualified_identifier"
+        
+        extra_scopes = None
+        if is_qualified:
+            extra_scopes, name = _split_qualified(name_node)
+        
+        enclosing = _enclosing_scopes(scopes, fn_node.start_byte, fn_node.end_byte)
+        kind = _classify_kind(name, enclosing, scope_kind_table, extra_scopes=extra_scopes)
+        fqn = _build_fqn(enclosing, name, scope_kind_table, extra_scopes=extra_scopes)
+        
+        sig = (fqn, params_sig)
+        
+        records.append(Record(
+            fqn=fqn,
+            kind=kind,
+            params_sig=params_sig,
+            start_point=fn_node.start_point,
+            end_point=fn_node.end_point,
+            is_template=False,
+            is_definition=False,
+            docstring=docstrings.get(fn_node.start_byte)
+        ))
+        
+    return records
     
     # --- fn.field_decl loop          ---
     for fn_node in captures.get("fn.field_decl", []):

@@ -1,3 +1,5 @@
+int declxyz();
+
 #include <iostream>
 
 struct { int x; void foo_x(); } TestStructType;

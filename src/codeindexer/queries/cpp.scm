@@ -82,7 +82,11 @@
 ; Only qualified ones: int math::Adder::sum(int x);
 (declaration
   declarator: (function_declarator
-    declarator: (qualified_identifier) @name.decl.qual
+    declarator: 
+    [
+      (identifier)           @name.decl
+      (qualified_identifier) @name.decl
+    ]
     parameters: (parameter_list) @params.decl))
   @fn.decl
 

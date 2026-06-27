@@ -2,6 +2,7 @@ import argparse
 from collections import deque
 from dataclasses import dataclass
 from pprint import pprint
+from rich import print
 import tree_sitter_cpp as tscpp
 from tree_sitter import Language, Parser
 
@@ -11,6 +12,7 @@ def get_argparser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Code Indexer CLI")
     parser.add_argument("--version", action="version", version=VERSION)
     parser.add_argument("--cpp", required=True, help="Path to the *.cpp file to index")
+    parser.add_argument("--query", action="store_true", help="Use query based parsing")
     # Add arguments here as needed
     return parser
 
@@ -194,7 +196,37 @@ def main() -> None:
     parser = get_argparser()
     args = parser.parse_args()
     if args.cpp:
-        parse_cpp_file(args.cpp)
+        if args.query:
+            from codeindexer.run_query import (
+                parse_file, attach_docstrings, FN_CAPTURE_KEYS, _collect_scopes, build_scope_kind_table, bind_captures)
+            result = parse_file(args.cpp)
+            # pprint(result)
+            caps = result["captures"]
+            src = result["src"]
+            
+            for cap_name, nodes in sorted(caps.items()):
+                print(f"[bold italic cyan]@{cap_name}[/bold italic cyan]: {len(nodes)} matches")
+                for n in nodes:
+                    print(f"    [{n.start_point[0] + 1}, {n.start_point[1]+1}] {n.text.decode()[:60]}")
+            
+            fn_captures = [n for k in FN_CAPTURE_KEYS for n in caps.get(k, [])]
+            fn_captures = sorted(fn_captures, key=lambda n: n.start_byte)
+            docstrings = attach_docstrings(caps, fn_captures, src)
+            print(docstrings)
+            
+            for fn in fn_captures:
+                ds = docstrings.get(fn.start_byte) or "<no docstring found>"
+                print(f"  L{fn.start_point[0]+1}: {ds}")
+                
+            print(_collect_scopes(caps))
+            scope_kind_table = build_scope_kind_table(caps)
+            print(scope_kind_table)
+            records = bind_captures(caps, scope_kind_table, src)
+            
+            print(records)
+            
+        else:
+            parse_cpp_file(args.cpp)
 
 if __name__ == "__main__":
     main()

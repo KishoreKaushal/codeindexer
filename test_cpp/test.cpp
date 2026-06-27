@@ -1,3 +1,5 @@
+int declxyz();
+
 #include <iostream>
 
 struct { int x; void foo_x(); } TestStructType;
@@ -13,6 +15,9 @@ public:
     Adder(int base) {}
     int sum(int x) { return x; } 
     int sum(int x, int y) { return x + y; }
+
+    int operator+(int a, int b) { return a + b; }
+
     friend std::ostream& operator<<(std::ostream& os, const Adder& a){
         return os << "Adder";
     }
@@ -44,6 +49,13 @@ struct Resource { Resource(){}  ~Resource(){} };
 
 // test for nested anonymous namespaces
 namespace {
+
+    // this is an example comment, which needs to get attached with `annon_namespace_func`
+
+
     void annon_namespace_func() {}
+    
+    
+    // this is an example comment gain but it shouldnt get attached with `annnested_annon_namespace_func`
     namespace { void nested_annon_namespace_func() {} };
 }
